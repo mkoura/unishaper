@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# ESFQ
+# Kompletni moznosti nastaveni v unishaper.conf_full
+
+iface0() {
+
+# nazev interfacu
+iface="wlan2"
+
+upload="yes"
+  # Co pouzit jako korenovy qdisc?
+  up_qdisc_type="esfq"
+
+  # vychozi hodnotu neni potreba menit, jen kdyz vime co delame
+  up_perturb_esfq="10"
+  # !!!DULEZITE!!!
+  # viz 'maly navod' -> NASTAVENI PARAMETRU 'dist' (unishper.conf_full)
+  up_dist_esfq="no"
+  # nepovinne - nastavime jen pokud vime co delame (viz tc qdisc add esfq help)
+  up_quantum_esfq=""
+  up_depth_esfq=""
+  up_divisor_esfq=""
+  up_limit_esfq=""
+
+return 0
+}

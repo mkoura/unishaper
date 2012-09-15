@@ -1,0 +1,339 @@
+## O unishaperu
+
+unishaper je skript pro nastavovani QoS na linuxu.
+Skript je napsany v shellu (POSIX). Vyhybal jsem se pouzivani externich prikazu
+vsude tam, kde to ma nejaky smysl. Diky tomu je unishaper dostatecne rychly i
+na hodne slabem hardwaru (treba ASUS wl500g) a z externich prikazu potrebuje
+jen cat a wc.
+
+
+Schopnosti:
+
+* podpora qdiscu HTB, PRIO, SFQ, ESFQ a TBF
+* moznost shapovat vstup pomoci IMQ
+* moznost shapovat vstup i vystup na neomezenem poctu interfacu
+* moznost vytvorit slozitou strukturu HTB trid
+* moznost kontroly nastaveni rate a ceil v cele hierarchii HTB
+* moznost nacitat seznamy IP adres z externiho souboru
+* moznost "vnorit" dalsi qdisc do vybranych trid classfull qdiscu (HTB a PRIO)
+  napr. HTB -> PRIO -> SFQ
+* moznost pouzit jeden IMQ interface pro upload i download
+  (pri pouziti HTB qdiscu)
+* moznost klasifikovat traffic podle vlastnich pravidel
+* moznost rozsirit nastaveni pomoci vlastnich shell funkci
+
+
+
+## Pozadavky
+
+Skript potrebuje:
+ 1) iptables, volitelne s podporou IMQ
+ 2) volitelne kernel s podporou IMQ a/nebo ESFQ
+ 3) tc z balicku iproute2, volitelne s podporou ESFQ
+ 4) prikaz wc, pokud mate seznamy IP adres ulozeny v samostatnych souborech
+
+Pokud chcete shapovat jen download (vystup), IMQ nepotrebujete. Pokud chcete
+shapovat upload (vstup), potrebujete podporou IMQ v jadre i iptables.
+Pokud chcete pouzivat ESFQ qdisc, potrebujete kernel a tc (program z baliku
+iproute2) s podporou ESFQ.
+Muzete shaper zkonfigurovat a pak spustit s parametrem -t (--tests) a on vam
+rekne, jestli je nekde problem.
+
+
+## IMQ
+
+Potrebujete iptables zkompilovane s podporou IMQ.
+
+Dale potrebujete podporu IMQ v linuxovem jadre (nebo jako modul). Muzete si
+opatchovat vlastni jadro zaplatami z http://www.linuximq.net/
+
+## TC
+
+Potrebujete tc zkompilovane s podporou ESFQ.
+
+Pro linuxove jadro plati to same jako v pripade IMQ.
+
+
+## dodatek k binarkam tc, iptables a kernelu
+
+IMQ patche pro iptables a kernel jsou dostupne na http://www.linuximq.net/
+ESFQ patche pro tc a kernel jsou dostupne na http://fatooh.org/esfq-2.6/
+
+
+## Instalace skriptu
+
+zkopirovat unishaper.sh treba do /usr/local/bin
+
+V adresari examples/ se nachazi nekolik ukazkovych konfiguracnich souboru.
+Prectete si hlavne soubor unishaper.conf_full, ktery obsahuje spoustu komentaru
+a kompletni nastaveni unishaperu. Potom si muzete upravit ten nejvhodnejsi z
+dostupnych konfiguracnich souboru v examples/ a zkopirovat ho do
+/usr/local/etc/unishaper.conf
+Potom doporucuji spustit unishaper s parametrem -t (--tests). Tim
+zkontrolujete, jestli mate pri soucasne konfiguraci vse co je potreba (IMQ,
+ESFQ, atd.).
+Pokud pouzivate HTB, doporucuji spustit unishaper take s parametrem -r (--rate)
+pro kontrolu nastaveni rate a ceil.
+Jestli rozumite QoS na linuxu, muzete si nechat vypsat vsechny prikazy ktere
+budou provedeny a projit si vystup (viz parametr -g nebo --gen).
+
+Ovladani sktiptu:
+unishaper.sh --help
+
+Skript ocekava konfiguracni soubor /usr/local/etc/unishaper.conf. Vychozi
+nastaveni muzete zmenit ve skriptu v promenne "config", nebo urcit jiny
+konfiguracni soubor parametrem -c /cesta/k/souboru
+
+Muzete si vytvorit nekolik verzi konfiguracniho souboru a spoustet
+unishaper.sh -c /cesta/k/souboru z cronu. Muzete tak mit ruzne nastaveni
+shaperu podle denni doby.
+
+Pro spousteni unishaperu pri bootu napiste prikaz unishaper.sh ... do
+/etc/init.d/local (zalezi na distribuci) nebo si napiste bootovaci skript.
+
+Skript se snazi chovat jako spravny unixovy program. Takze pokud vse probiha
+dobre, je potichu. Pokud skript skonci aniz by neco vypsal, vse probehlo
+bezchybne.
+
+
+## Nastaveni unishaperu
+
+RUZNE QDISCY
+
+ HTB, CBQ, HSFC
+   Z techto qdiscu je v unishaperu podporovan jen HTB.
+   Muzeme kontrolovat rate, ceil (pujcovani), rozdelit traffic podle vlastniho
+   uvazeni atd. Bohuzel musime nastavit rate na nejakou pevnou hodnotu. To muze
+   pusobit problemy, pokud dojde napriklad vlivem ruseni ke kratkodobemu
+   snizeni kapacity linky na hodnotu nizsi nez nastaveny rate. Tohle muze
+   vyresit treba qdics (E)SFQ.
+   Jedna se o classfull qdiscy, takze muzeme vytvaret ruzne hierarchie trid a
+   "vclenovat" dalsi qdiscy (treba SFQ, ESFQ, ...).
+ SFQ, ESFQ
+   Nemame takovou kontrolu nad trafficem, ale nemusime nastavovat rate. Dokaze
+   se tedy lepe vyrovnat s kratkodobym poklesem kapacity linky. Pri pouziti SFQ
+   ale musime spolehat na slusnost uzivatel, protoze jeden clovek s
+   massdownloaderem dokaze vytizit celou linku. Tohle dokaze resit ESFQ, ktere
+   ale neni standardni soucasti linuxu ani tc (viz README).
+ PRIO
+   Umoznuje rozdelit traffic podle ruznych kriterii (z jakeho portu pochazi, na
+   jaky port smeruje, o jaky se jedna protokol, atd.) do trid. Traffic v kazde
+   tride ma jinou prioritu. Takze muzeme zvyhodnit treba ssh, DNS atd. Jedna se
+   o classfull qdisc, takze do kazde tridy muzeme napr. "vclenit" dalsi qdisc
+   (treba SFQ, TBF, ...).
+ TBF
+   Funguje na stejnem principu jako HTB, ale neni to classfull qdisc. Hodi se
+   napr. pro "vcleneni" do nektere PRIO tridy, pokud v ni chceme omezit traffic
+   na nejakou konkretni hodnotu.
+ bfifo/pfifo
+   Jeste jednodussi nez vychozi fronta pfifo_fast, nic neomezuji ani
+   neuprednostnuji. Narozdil od pfifo_fast ale uchovavaji nejakou statistiku.
+
+
+NASTAVENI HTB
+
+ "rate" - kolik garantujeme
+ "ceil" - maximum, nad ktere to nema vylezt, strop, kolik maximalne "pujcit"
+
+ root_rate - maximalni rate, ktery tece interfacem konkretnim smerem
+   (upload nebo download)
+ default rate a ceil jsou parametry, ktere se pouziji pokud dany provoz nema
+   vlastni rouru
+
+ Struktura trid HTB muze byt pomerne slozita. Musi ale vzdy platit, ze ceil
+ konkretni tridy nesmi byt vyssi nez rate, a ze soucet rate vsech vnorenych
+ trid musi byt nizsi nez rate rodicovske tridy.
+ Je to mozne zkontrolovat spustenim unishaperu s parametrem -r (nebo --rate).
+
+
+NASTAVENI VOLBY 'dist' - tyka se jen qdiscu HTB a ESFQ
+
+ dist - tuto volbu nastavime na 'yes', pokud shapujeme "vzdaleny"
+	interface z pohledu uzivatele, ktereho traffic omezujeme (tj. omezujeme
+	jeho traffic pres interface, na ktery neni primo pripojen).
+	Nastavime vzdy na 'yes' pokud nam shaper bezi na jinem pocitaci, nez
+	pres ktery jsou uzivatele pripojeni.
+
+ upload - vstup na shapovany interface, upload z pohledu interfacu
+          tj. nemusi to byt vzdy upload z pohledu pripojence.
+ download - vystup z interfacu, plati to same co pro upload
+
+ Priklad:
+
+        eth0
+         |
+        / \
+   wlan0   wlan1
+
+   eth0 je interface do internetu, na wlan0 a wlan1 jsou pripojeni uzivatele.
+
+ Bezne nas pri shapovani uploadu zajima "source" (tj. od koho paket pochazi,
+ kdo uploaduje), pri shapovani downloadu nas zajima "destination" (tj. kam
+ paket smeruje, kdo stahuje).
+ Kdyz uzivatel pripojeny na wlan0 neco uploaduje do internetu, wlan0 je vstup,
+ eth0 je vystup. Source (zdroj) je IP adresa uzivatele. Pokud budeme tento
+ provoz shapovat na wlan0, je vsechno v poradku, ale potrebujeme podporu IMQ.
+ Muzeme ale take tento provoz shapovat na eth0. Na eth0 se ale jedna o vystup,
+ (tj. z pohledu eth0 o "download"). V tomto pripade nas u vystupu nezajima
+ destination (cil) paketu (kam paket smeruje - tohle nas obvykle u vystupu
+ zajima), ale od koho pochazi (source). Takze nastavime 'dist' na yes. Z
+ pohledu uzivatele shapujeme "vzdaleny" interface a proto se nam prohodi source
+ a destination.
+ Zni to slozite, ale v podstate pokazde kdyz budeme shapovat nejakeho uzivatele
+ pres interface, na ktery neni primo pripojen, nastavime 'dist' na yes.
+
+ Nasledujici radky se uz tykaji jen HTB.
+ Dalsi komplikaci u "vzdaleneho" interfacu je shapovani lokalniho trafficu.
+ Pokud bude nekdo, kdo _neni_ pripojeny na wlan0 ani na wlan1, stahovat nebo
+ uploadovat z/na lokalni pocitac (pocitac na kterem funguje tenhle shaper),
+ veskery jeho traffic pujde do "default" tridy.
+ V pripade odchoziho trafficu (tj. nekdo stahuje) muzeme vytvorit novou skupinu
+ trid s dl_CISLO_range='seznam_lokalnich_ip_adres' (adresy oddeleny carkami,
+ viz navod nize) a nastavit nejaky rate a ceil (nebo muzeme dat lokalni IP
+ adresy do seznamu adres, ktere se "vyhnou" shaperu).
+ Problem nastane v pripade prichoziho trafficu (tj. nekdo uploaduje). Bezne
+ totiz musime tenhle traffic oznacovat v chainu FORWARD (kvuli DNAT nemuzeme
+ pouzit PREROUTING). Ted ale musime pouzit INPUT. Tady nam nezbyde nez si
+ definovat vlastni funkci (viz navod nize) na oznacovani paketu. Vytvorime si
+ novou skupinu trid jako obvykle, ale neuvedeme zadny rozsah (up_CISLO_range).
+ Zarazeni trafficu do nasi tridy provedeme pomoci vlastni funkce (ukazka funkce
+ ktera toto resi je na konci tohoto souboru pod jmenem 'my_htb_dist'), takze
+ nastavime up_CISLO_function='my_htb_dist'. Hotovo.
+
+
+SYNTAXE KONFIGURACNIHO SOUBORU
+
+nastaveni pro jednotlive interfacy:
+
+ Skript umoznuje nastavit shapovani pro ruzne interfacy. Prvni interface je
+ iface0, nasleduje iface1 atd. Interfacy musi byt definovany za sebou (ale
+ nemusi byt primo za sebou zapsany). Neni tedy mozne definovat iface0 a iface2
+ a pritom nedefinovat iface1.
+ Syntaxe je takovato:
+
+ iface0() {
+ iface="eth0"
+ parametr
+ dalsi_parametr
+ ...
+ return 0
+ }
+
+ ... takze vlastne normalni shellovska funkce
+ Skript konci kdyz neni definovana dalsi funkce v poradi. Preskocit nastaveni
+ konkretniho interfacu je mozne zakomentovanim (nedefinovanim) parametru
+ "iface=neco" v prislusne funkci. Skript pak pokracuje dal na dalsi interface.
+ Nektere volby budou nastaveny na vychozi hodnoty, pokud je nanastavime v
+ konfiguracnim souboru. Seznam techto voleb (s koncovkou _def) je uveden na
+ zacatku skriptu.
+
+nastaveni IP adres u HTB qdiscu:
+
+ muzeme zadat bud jednotlive IP adresy - napr. 10.107.3.51
+ nebo rozsah IP adres, z nichz kazda bude mit vlastni
+   rouru - napr. 10.107.3.53-56
+ nebo adresu site, ktera ma dostat _jednu_ rouru pro vsechny sve
+   IP adresy dohromady - napr. 10.107.4.0/24 nebo 10.107.4.0/255.255.255.0
+ nebo carkou oddeleny seznam IP adres (za carkou nesmi byt mezera!),
+   ktere budou mit spolecnou rouru (napr. vic IP adres patricich jednomu
+   uzivateli) - napr. 10.107.3.58,10.107.3.62,10.107.3.65
+
+ IP adresy jsou oddeleny mezerou - napr.
+   up_1_range="10.107.3.51 10.107.3.53-56 10.107.4.0/24 10.107.3.58,10.107.3.62,10.107.3.65 10.107.5.0/255.255.255.0"
+
+ IP adresy muzeme take zapsat do samostatneho souboru. Na kazdem radku je
+ samostatna IP adresa, nebo seznam IP adres oddeleny carkou (napr. vic IP adres
+ patrici jednomu uzivateli), nebo adresa site (dostane jednu rouru). Nemuzeme
+ pouzit rozsah IP adres jako v predchozim pripade, takze napr. 10.107.3.53-56
+ nebude fungovat.
+ Priklad:
+ up_1_range="file:/cesta/k/souboru/soubor"
+ Soubor nemuze obsahovat komentare a nemel by obsahovat ani prazdne radky.
+ Muzete si ale udelat komentovanou verzi souboru a skriptem "cleanlist" z
+ adresare examples/other si vytvorit "cistou" verzi pro pouziti v unishaperu.
+
+
+DEFINOVANI VLASTNICH FUNKCI (vhodne asi jen pro unishaper guru :)
+
+ Do kazdeho qdiscu nebo kazde tridy (u classfull qdiscu) je mozne definovat
+ vlastni funkci. Je tam mozne nastavit treba dalsi podminky pro trideni paketu,
+ nebo po precteni kodu unishaperu i slozitejsi veci.
+ Psani vlastnich funkci vyzaduje znalost shellu i nastavovani QoS v linuxu.
+
+ Priklady vlastnich funkci jsou uvedeny na konci tohoto souboru.
+
+ Nazev vlastni promenne nesmi kolidovat s nazvem promenne v unishaperu.
+ Doporucuji dat kazde vlastni promenne predponu my_ (nebo podobne), nebo ji
+ definovat jako lokalni (local jmeno_promenne=neco)
+
+ Nasledujici promenne jsou !!! READ ONLY !!! - jakekoli jejich zmeny
+ _budou_ mit vliv na chovani unishaperu!
+
+ Uzitecne "globalni" promenne:
+ $check    - kontroluje navratovou hodnotu prikazu. Pokud je jina nez 0,
+             vypise chybovou hlasku, uklidi a konci.
+             Pouziti: $check prikaz parametry
+ $clean    - uklidi vse co bylo dosud nastaveno. Volame po chybe,
+             po ktere uz nechceme pokracovat
+             Pouziti: $clean
+ $dbg      - v rezimu "vypisu" (parametry jako -d, -g, -G) se prikaz
+             jen vypise, pri jinem nastaveni (parametry jako -p, -r, -t)
+             se neprovede nic (vhodne pouziti viz zdrojaky unishaperu)
+             Pouziti: $dbg prikaz parametry
+ $tc       - zadana cesta k prikazu tc, pokud neni v PATH
+ $ip       - zadana cesta k prikazu ip, pokud neni v PATH
+ $iptables - zadana cesta k prikazu iptables, pokud neni v PATH
+ $imqnum   - obsahuje cislo aktualniho imq zarizeni (kdyz obsahuje cislo 0,
+             je aktualni imq zarizeni imq0 atd.)
+ $iface    - zarizeni, ktere zrovna nastavujeme (napr. eth0, wlan2 atd.)
+ $sdev     - zarizeni, ktere pouzivame v tc (tc ... dev $sdev ...).
+             Je bud stejne jako $iface, nebo imq$imqnum pri pouziti imq.
+ $act      - obsahuje bud 'dl' kdyz nastavujeme vystup, nebo 'up'
+             kdyz nastavujeme vstup
+ $main_qdisc - jmeno korenoveho qdiscu (htb, prio, ...)
+ $last_qdisc - jmeno predchoziho korenoveho qdiscu (htb, prio, ...)
+ $stop_only  - obsahuje 'yes' pokud nic nenastavujeme, ale mazeme
+               uz nastavena pravidla
+
+ promenne pro HTB qdisc:
+ $use_imq   - pokud se jedna o vystup ($act = dl) a tahle promenna
+              obsahuje yes, pouziva se IMQ i pro vystup
+ $classid   - "minor id" tridy (tc ... classid 1:$classid ...)
+              je dostupne jen pokud jsme zadali 'range' (seznam IP adres)
+ $dist      - obsahuje 'yes' nebo 'no', podle nastaveni up_dist (dl_dist)
+              viz 'maly navod' -> NASTAVENI PARAMETRU 'dist'
+ $iptchain  - obsahuje bud 'pre', 'post' nebo 'fw'. Slouzi k urceni do jakeho
+              chainu pro iptables se pravidlo pripoji - unishaper_pre,
+              unishaper_post, ..., tj. unishaper_$iptchain.
+              Zalezi jestli se jedna o vstup nebo vystup a jestli je
+              parametr 'dist' (up_dist apod.) yes nebo no.
+ $io        - obsahuje bud -i nebo -o Zalezi jestli se jedna o vstup nebo
+              vystup a jestli je parametr 'dist' (up_dist apod.) yes nebo no.
+              Priklad:
+              iptables -t mangle -A unishaper_${iptchain} $io "$iface" ...
+ $sd        - obsahuje bud -s nebo -d Plati stejny popis jako u predchozi
+              promenne.
+              Priklad:
+              iptables ... $sd 10.107.3.77 -j MARK ...
+ $parentcl  - "minor id" rodicovske tridy.
+ $notshape  - pakety nasmerovane do teto tridy se vyhnou shaperu
+              Priklad: iptables ... --set-mark "$notshape"
+ $in_qdisc_htb - jmeno vnoreneho qdiscu (prio, sfq, esfq)
+
+ U HTB jsou k dispozici chainy unishaper_{pre,post,in,out,fw} (odpovidajici
+ chainum PREROUTING, POSTROUTING, INPUT, OUTPUT a FORWARD) pro klasifikovani
+ paketu pomoci iptables.
+
+ promenne pro PRIO - uvnitr qdiscu (vnoreny qdisc, tj. PRIO neni
+                     korenovy qdisc)
+ $1         - "major id" rodicovskeho qdiscu
+ $2         - "minor id" rodicovskeho qdiscu
+
+ promenne pro PRIO - uvnitr tridy
+ $1         - "major id" aktualniho qdiscu
+ $prionum   - "minor id", tj. cislo aktualni tridy
+ in_qdisc_${prionum}_prio - jmeno vnoreneho qdiscu (sfq, esfq, tbf)
+
+ promenne pro SFQ, ESFQ, TBF a bfifo/pfifo - vnoreny qdisc
+ $1         - "major id" rodicovskeho qdiscu
+ $2         - "minor id" rodicovskeho qdiscu

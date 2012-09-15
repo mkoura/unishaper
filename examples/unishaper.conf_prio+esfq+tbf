@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# PRIO + ESFQ + TBF
+# Kompletni moznosti nastaveni v unishaper.conf_full
+
+iface0() {
+
+# nazev interfacu
+iface="wlan2"
+
+# chceme shapovat upload (vstup) pro tenhle interface?
+upload="yes"
+  # Co pouzit jako korenovy qdisc?
+  up_qdisc_type="prio"
+
+  # 3 je vychozi hodnota. Pokud ji zmenite, musite prenastavit i
+  # nasledujici volbu priomap.
+  up_bands_prio=3
+  up_priomap_prio=""
+
+  # protokoly i sluzby je nutne zadavat ciselne!
+  # viz /etc/protocols - icmp: 1, tcp: 6, udp: 17, atd.
+  # a /etc/services - ssh: 22, smtp: 25, DNS: 53 (UDP), atd.
+  up_1_protocols_prio="1"
+  # provoz na nasledujici tcp porty dame do nejprioritnejsi tridy
+  up_1_tcp_dports_prio="22"
+  # provoz z nasledujicich tcp portu dame do nejprioritnejsi tridy
+  up_1_tcp_sports_prio=""
+  # provoz na nasledujici udp porty dame do nejprioritnejsi tridy
+  up_1_udp_dports_prio="53"
+  # provoz z nasledujicich udp portu dame do nejprioritnejsi tridy
+  up_1_udp_sports_prio=""
+  # uvnitr tridy je take mozne pouzit dalsi qdisc (TBF, SFQ nebo ESFQ).
+  # Volby jsou stejne jako kdyz je qdisc pouzit samostatne
+  # (viz nastaveni vyse), ale ve tvaru up_1_volba.
+  up_1_in_qdisc_type_prio=""
+
+  # druha, mene prioritni trida
+  # Plati stejne komentare jako u predchozi tridy.
+  up_2_protocols_prio=""
+  up_2_tcp_dports_prio="80 25"
+  up_2_tcp_sports_prio=""
+  up_2_udp_dports_prio=""
+  up_2_udp_sports_prio=""
+  # vnorime ESFQ qdisc
+  up_2_in_qdisc_type_prio="esfq"
+  # nastavime parametry vnoreneho qdiscu
+  up_2_perturb_esfq="10"
+  # !!!DULEZITE!!!
+  # viz 'maly navod' -> NASTAVENI PARAMETRU 'dist' (unishper.conf_full)
+  # pri pouziti ESFQ uvnitr qdiscu PRIO musime parametr 'dist' nstavit,
+  # protoze PRIO (narozdil od HTB), nepotrebuje vedet jestli se jedna o
+  # 'vzdaleny' interface nebo ne. ESFQ to ale vedet potrebuje.
+  up_2_dist_esfq="no"
+
+  # treti, pri soucasnem nastaveni (up_bands_prio=3) nejmene prioritni trida
+  # Sem prijde vsechno, co jsme nenasmerovali do vyssich trid, takze nemusime
+  # zadne filtry nastavovat.
+  up_3_protocols_prio=""
+  up_3_tcp_dports_prio=""
+  up_3_tcp_sports_prio=""
+  up_3_udp_dports_prio=""
+  up_3_udp_sports_prio=""
+  # vnorime TBF qdisc
+  up_3_in_qdisc_type_prio="tbf"
+  # provoz v teto tride omezime na 200kbit
+  up_3_rate_tbf="200"
+
+download="no"
+
+return 0
+}

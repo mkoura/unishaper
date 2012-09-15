@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# PRIO
+# Kompletni moznosti nastaveni v unishaper.conf_full
+
+iface0() {
+
+# nazev interfacu
+iface="eth0"
+
+# chceme shapovat upload (vstup) pro tenhle interface?
+upload="no"
+download="yes"
+  # Co pouzit jako korenovy qdisc?
+  dl_qdisc_type="prio"
+
+  # 3 je vychozi hodnota. Pokud ji zmenite, musite prenastavit i
+  # nasledujici volbu priomap.
+  dl_bands_prio=3
+  dl_priomap_prio=""
+
+  # protokoly i sluzby je nutne zadavat ciselne!
+  # viz /etc/protocols - icmp: 1, tcp: 6, udp: 17, atd.
+  # a /etc/services - ssh: 22, smtp: 25, DNS: 53 (UDP), atd.
+  dl_1_protocols_prio="1"
+  # provoz na nasledujici tcp porty dame do nejprioritnejsi tridy
+  dl_1_tcp_dports_prio="22"
+  # provoz z nasledujicich tcp portu dame do nejprioritnejsi tridy
+  dl_1_tcp_sports_prio=""
+  # provoz na nasledujici udp porty dame do nejprioritnejsi tridy
+  dl_1_udp_dports_prio="53"
+  # provoz z nasledujicich udp portu dame do nejprioritnejsi tridy
+  dl_1_udp_sports_prio=""
+  # uvnitr tridy je take mozne pouzit dalsi qdisc (TBF, SFQ nebo ESFQ).
+  # Volby jsou stejne jako kdyz je qdisc pouzit samostatne
+  # (viz nastaveni vyse), ale ve tvaru up_1_volba.
+  dl_1_in_qdisc_type_prio=""
+
+  # druha, mene prioritni trida
+  # Plati stejne komentare jako u predchozi tridy.
+  dl_2_protocols_prio=""
+  dl_2_tcp_dports_prio="80 25 465"
+  dl_2_tcp_sports_prio=""
+  dl_2_udp_dports_prio=""
+  dl_2_udp_sports_prio=""
+  dl_2_in_qdisc_type_prio=""
+
+  # treti, pri soucasnem nastaveni (up_bands_prio=3) nejmene prioritni trida
+  # Sem prijde vsechno, co jsme nenasmerovali do vyssich trid, takze nemusime
+  # zadne podminky nastavovat.
+
+return 0
+}

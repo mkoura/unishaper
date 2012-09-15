@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# na standardnim vstupu ocekava obsah souboru se seznamem IP adres
+# Odstrani vsechny komentare a prazdne radky a vysledek vypise
+# na standardni vystup.
+
+sed '/^[^12][^0-9].*/d;/^$/d'

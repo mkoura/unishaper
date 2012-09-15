@@ -1,0 +1,52 @@
+#!/bin/sh
+
+# HTB
+# Kompletni moznosti nastaveni v unishaper.conf_full
+
+iface0() {
+
+# nazev interfacu
+iface="wlan2"
+
+upload="yes"
+  # maximalni rate, ktery tece interfacem jednim smerem
+  # pro kontrolu nastaveni viz parametr -r (nebo --rate) unishaperu
+  up_root_rate="1500"
+  # rate default tridy (tam spadne provoz ktery neni zarazen do zadne tridy)
+  up_rate="13"
+  # ceil default tridy
+  up_ceil="300"
+
+  # nastaveni pro prvni skupinu IP adres
+  up_1_range="10.107.3.2-4 10.107.3.6-8"
+  up_1_rate="13"
+  up_1_ceil="300"
+
+  # nastaveni pro druhou skupinu IP adres
+  up_2_range="10.107.3.31-33 10.107.3.70-73"
+  up_2_rate="30"
+  up_2_ceil="800"
+
+  # nastaveni pro treti skupinu IP adres
+  up_3_range="10.107.3.87 10.107.3.105-106"
+  up_3_rate="40"
+  up_3_ceil="900"
+
+  # nastaveni pro ctvrtou skupinu IP adres - bude jen "rodic" pro
+  # dasi skupinu
+  up_4_class_name=sosny1
+  up_4_unit="kbit"
+  up_4_rate="512"
+  up_4_ceil="1024"
+
+  # nastaveni pro patou skupinu IP adres - bude "potomkem" tridy 'sosny1'
+  up_5_parent=sosny1
+  up_5_range="10.107.3.125,10.107.3.126 10.107.3.127"
+  up_5_unit="kbit"
+  up_5_rate="20"
+  up_5_ceil="512"
+
+download="no"
+
+return 0
+}

@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# na standardnim vstupu ocekava seznam IP adres ve formatu, v jakem se
+# zapisuji do konf. souboru u volby 'range'
+# na standardni vystup vypise seznam IP adres pro pouziti v samostatnem souboru
+# Priklad:
+# echo "10.107.3.66-92 10.107.4.100-152" |./genrange > seznam
+
+read tmp_rozsah
+
+for i in $tmp_rozsah; do
+  tmp_base_ip="${i%.*}"
+  i="${i##*.}"
+  od="${i%-*}"
+  do="${i#*-}"
+  [ "$od" = "$do" ] \
+  && {
+    echo "${tmp_base_ip}.${od}"
+    continue
+  }
+  [ "$do" -lt "$od" ] \
+  && {
+    perror "spatne zadany rozsah ${od}-${do}"
+    exit 1
+  }
+  while [ "$od" -le "$do" ]; do
+    echo "${tmp_base_ip}.${od}"
+    local od="$(($od + 1))"
+  done
+done

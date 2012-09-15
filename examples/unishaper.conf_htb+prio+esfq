@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# HTB + PRIO + ESFQ
+# Kompletni moznosti nastaveni v unishaper.conf_full
+
+iface0() {
+
+iface="wlan2"
+
+upload="yes"
+  # jednotky v kterych se zadava rate a ceil (default kbit)
+  up_unit="kbit"
+  # maximalni rate, ktery tece interfacem jednim smerem
+  # pro kontrolu nastaveni viz parametr -r (nebo --rate) unishaperu
+  up_root_rate="1500"
+  # ceil default tridy
+  up_ceil="300"
+  # rate default tridy (tam spadne provoz ktery neni zarazen do zadne tridy)
+  up_rate="130"
+  # !!!DULEZITE!!!
+  # viz 'maly navod' -> NASTAVENI PARAMETRU 'dist' (unishper.conf_full)
+  # jedna se o "vzdaleny" interface z pohledu uzivatele (tj. je nutne prohodit
+  # source a destination u iptables)?
+  up_dist="no"
+
+  # IP adresy ktere chceme shapovat
+  up_1_range="10.107.3.2-3 10.107.3.49-50"
+  # jednotky
+  up_1_unit="kbit"
+  # rate pro jednotlive uzivatele
+  up_1_rate="13"
+  up_1_ceil="300"
+  # uvnitr tridy pouzijeme PRIO
+  up_1_in_qdisc_type="prio"
+  up_1_bands_prio=3
+  # nastaveni prvni PRIO tridy uvnitr prvni skupiny HTB
+  up_1_1_protocols_prio="1"
+  up_1_1_tcp_dports_prio="22"
+  up_1_1_udp_dports_prio="53"
+  up_1_2_tcp_dports_prio="80 25"
+  # dovnitr druhe PRIO tridy dame jeste ESFQ
+  up_1_2_in_qdisc_type_prio="esfq"
+  up_1_2_perturb_esfq="10"
+
+download="no"
+
+return 0
+}

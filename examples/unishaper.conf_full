@@ -1,0 +1,408 @@
+#!/bin/sh
+
+# DON'T PANIC!!!
+# je to jednodussi nez to vypada, viz ostatni priklady v examples/
+
+# nezapomente ze tohle je taky shell skript. Kdyz sem napisete nejaky prikaz
+# (treba rm -Rf /), tak se pri spusteni unishaperu provede!
+
+
+iface0() {
+
+# nazev interfacu
+iface="wlan2"
+
+# chceme shapovat input (vstup) pro tenhle interface?
+# Jestli ne, nastavime input=no a nasledujici parametry nemusime nastavovat.
+input="yes"
+  # Co pouzit jako korenovy qdisc?
+  # Podporovany jsou zatim htb (default), sfq, esfq, prio, tbf a bfifo/pfifo.
+  in_qdisc_type="htb"
+
+
+  #### nastaveni pro SFQ (nemusime pokud nechceme SFQ pouzit) ####
+  #
+  #
+
+  # vychozi hodnotu neni potreba menit, jen kdyz vime co delame
+  in_perturb_sfq="10"
+  # nepovinne parametry - nastavime jen pokud vime co delame
+  # (viz tc qdisc add sfq help)
+  in_quantum_sfq=""
+  in_limit_sfq=""
+  # nazev vlastni funkce, kterou chceme spustit pri nastavovani SFQ
+  in_function_sfq=""
+
+  #
+  ###
+
+  #### nastaveni pro ESFQ (nemusime pokud nechceme ESFQ pouzit) ####
+  #
+  #
+
+  # vychozi hodnotu neni potreba menit, jen kdyz vime co delame
+  in_perturb_esfq="10"
+  # !!!DULEZITE!!!
+  # viz NASTAVENI PARAMETRU 'dist' v README
+  in_dist_esfq="no"
+  # nepovinne - nastavime jen pokud vime co delame (viz tc qdisc add esfq help)
+  in_quantum_esfq=""
+  in_depth_esfq=""
+  in_divisor_esfq=""
+  in_limit_esfq=""
+  # nazev vlastni funkce, kterou chceme spustit pri nastavovani ESFQ
+  in_function_esfq=""
+
+  #
+  ###
+
+  #### nastaveni pro TBF (nemusime pokud nechceme TBF pouzit) ####
+  #
+  #
+
+  # jednotky v kterych se zadava rate (default kbit)
+  in_unit_tbf="kbit"
+  # na kolik chceme omezit?
+  in_rate_tbf="200"
+  # nepovinne - nastavime jen pokud vime co delame (viz tc qdisc add tbf help)
+  in_limit_tbf=""
+  in_latency_tbf=""
+  in_burst_tbf=""
+  in_mpu_tbf=""
+  in_peakrate_tbf=""
+  in_mtu_tbf=""
+  # nazev vlastni funkce, kterou chceme spustit pri nastavovani TBF
+  in_function_tbf=""
+
+  #
+  ###
+
+  #### nastaveni pro bfifo (nemusime pokud nechceme bfifo pouzit) ####
+  #
+  #
+
+  # nepovinne - nastavime jen pokud vime co delame (viz tc qdisc add bfifo help)
+  # u bfifo se zadava v bytech
+  in_limit_bfifo=""
+  # nazev vlastni funkce, kterou chceme spustit pri nastavovani bfifo
+  in_function_bfifo=""
+
+  #
+  ###
+
+  #### nastaveni pro pfifo (nemusime pokud nechceme pfifo pouzit) ####
+  #
+  #
+
+  # nepovinne - nastavime jen pokud vime co delame (viz tc qdisc add pfifo help)
+  # u pfifo se zadava v paketech
+  in_limit_pfifo=""
+  # nazev vlastni funkce, kterou chceme spustit pri nastavovani pfifo
+  in_function_pfifo=""
+
+  #
+  ###
+
+  #### nastaveni pro PRIO (nemusime pokud nechceme PRIO pouzit) ####
+  #
+  #
+
+  # 3 je vychozi hodnota. Pokud ji zmenite, musite prenastavit i
+  # volbu priomap.
+  in_bands_prio=3
+  in_priomap_prio=""
+  # nazev vlastni funkce, kterou chceme spustit pri nastavovani PRIO
+  in_function_prio=""
+
+  ## nastaveni jednotlivych trid, jejich pocet zavisi
+  ## na hodnote 'in_bands_prio'
+  # protokoly i sluzby je nutne zadavat ciselne!
+  # viz /etc/protocols - icmp: 1, tcp: 6, udp: 17, atd.
+  # a /etc/services - ssh: 22, smtp: 25, DNS: 53 (UDP), atd.
+  in_1_protocols_prio="1"
+  # provoz na nasledujici tcp porty dame do nejprioritnejsi tridy
+  in_1_tcp_dports_prio="22"
+  # provoz z nasledujicich tcp portu dame do nejprioritnejsi tridy
+  in_1_tcp_sports_prio=""
+  # provoz na nasledujici udp porty dame do nejprioritnejsi tridy
+  in_1_udp_dports_prio="53"
+  # provoz z nasledujicich udp portu dame do nejprioritnejsi tridy
+  in_1_udp_sports_prio=""
+  # nazev vlastni funkce, kterou chceme spustit v teto PRIO tride
+  # viz funkce my_prio1 na konci souboru
+  in_1_function_prio="my_prio1"
+  # uvnitr tridy je take mozne pouzit dalsi qdisc (TBF, SFQ nebo ESFQ).
+  # Volby jsou stejne jako kdyz je qdisc pouzit samostatne
+  # (viz nastaveni vyse), ale ve tvaru in_1_volba.
+  in_1_nest_qdisc_type_prio=""
+
+  # druha, mene prioritni trida
+  # Plati stejne komentare jako u predchozi tridy.
+  in_2_protocols_prio=""
+  in_2_tcp_dports_prio="80 25"
+  in_2_tcp_sports_prio=""
+  in_2_udp_dports_prio=""
+  in_2_udp_sports_prio=""
+  in_2_function_prio=""
+  # vnorime ESFQ qdisc
+  in_2_nest_qdisc_type_prio="esfq"
+  # nastavime parametry vnoreneho qdiscu
+  in_2_perturb_esfq="10"
+  # !!!DULEZITE!!!
+  # viz 'maly navod' -> NASTAVENI PARAMETRU 'dist' (unishper.conf_full)
+  # pri pouziti ESFQ uvnitr qdiscu PRIO musime parametr 'dist' nastavit,
+  # protoze PRIO (narozdil od HTB), nepotrebuje vedet jestli se jedna o
+  # 'vzdaleny' interface nebo ne. ESFQ to ale vedet potrebuje.
+  in_2_dist_esfq="no"
+
+  # treti, pri soucasnem nastaveni (in_bands_prio=3) nejmene prioritni trida
+  # Sem prijde vsechno, co jsme nenasmerovali do vyssich trid, takze nemusime
+  # zadne podminky nastavovat.
+  in_3_protocols_prio=""
+  in_3_tcp_dports_prio=""
+  in_3_tcp_sports_prio=""
+  in_3_udp_dports_prio=""
+  in_3_udp_sports_prio=""
+  in_3_function_prio=""
+  # vnorime TBF qdisc
+  in_3_nest_qdisc_type_prio="tbf"
+  # provoz v teto tride omezime na 200kbit
+  in_3_rate_tbf="200"
+
+  #
+  ###
+
+  #### nastaveni pro HTB (nemusime pokud nechceme HTB pouzit) ####
+  #
+  #
+
+  # jednotky v kterych se zadava rate a ceil (default kbit)
+  in_unit="kbit"
+  # maximalni rate, ktery tece interfacem jednim smerem
+  # rate user trid * pocet user trid + rate default tridy <= rate interfacu
+  # pro kontrolu nastaveni viz parametr -r (nebo --rate) unishaperu
+  in_root_rate="1300"
+  # ceil default tridy
+  # ceil jedne tridy je dobre nastavit nepatrne nizsi nez je rate interfacu
+  # nekdy se hodi to poddimenzovat trochu vic...
+  in_ceil="300"
+  # default rate pro input
+  in_rate="13"
+  # !!!DULEZITE!!!
+  # viz 'maly navod' -> NASTAVENI PARAMETRU 'dist' (unishper.conf_full)
+  # jedna se o "vzdaleny" interface z pohledu uzivatele (tj. je nutne prohodit
+  # source a destination u iptables)?
+  in_dist="no"
+  # IP adresy, ktere se maji vyhnout shaperu. Pokud zadne takove nejsou,
+  # nechame prazdne. Nastavovat jen v nejnutnejsich pripadech! Kdyz nejaky
+  # traffic obchazi shaper, shaper o nem vubec nevi a nemuze proto efektivne
+  # rozdelovat ani zbytek kapacity linky. Lepsi reseni je udelat specialni
+  # skupinu trid (viz in_1_, in_2_, atd.) s vyssim rate a ceil.
+  in_not_shape_range=""
+  # slouzi k vypoctu DRR quantum - zmenime pokud vime co delame
+  in_r2q="2"
+  # nazev vlastni funkce, kterou chceme spustit pri nastavovani HTB
+  in_function="my_htb_root"
+
+  # nastaveni pravidel pro "lokalni" provoz, tj. provoz smerujici _na_ pocitac
+  # na kterem bezi tento shaper pres interface ktery zde nastavujeme
+  in_local_rate=""
+  in_local_ceil=""
+
+  ## nastaveni skupin trid
+
+  # nastaveni prvni skupiny trid
+  # IP adresy ktere chceme shapovat - viz Maly navod
+  # (pp je jen pomocna promenna, abych zaklad nemusel porad vypisovat)
+  pp="10.107.3"
+  in_1_range="$pp.2-4 $pp.49-51"
+  # muzeme taky nacist IP adresy ze souboru
+  #in_1_range="file:/home/martink/doc/tmp/ip_adresy"
+  # jednotky
+  in_1_unit="kbit"
+  # rate pro jednotlive uzivatele
+  in_1_rate="13"
+  in_1_ceil="300"
+  # muzeme nastavit 'dist' (viz vyse) i u jednotlivych skupin trid
+  in_1_dist=''
+  # dalsi nepovinne parametry, jen pokud vime co delame
+  # (viz tc qdisc add htb help)
+  in_1_burst="1"
+  in_1_mpu="5"
+  in_1_overhead=""
+  in_1_cburst=""
+  in_1_mtu=""
+  in_1_prio=""
+  in_1_quantum=""
+  # nazev vlastni funkce, kterou chceme spustit v kazde HTB tride v teto skupine
+  in_1_function=""
+  # uvnitr kazde tridy je take mozne pouzit dalsi qdisc (PRIO, SFQ nebo ESFQ).
+  # Volby jsou stejne jako kdyz je qdisc pouzit samostatne
+  # (viz nastaveni vyse), ale ve tvaru in_1_volba.
+  in_1_nest_qdisc_type="esfq"
+  in_1_perturb_esfq="10"
+
+  # nastaveni pro dalsi skupinu trid - tahle skupina bude slouzit jen jako
+  # rodic jinym tridam.
+  # Nema tedy smysl nastavovat nic krome nasledujicich parametru.
+  # class_name muze byt jakykoli souvisly retezec ASCII znaku.
+  in_2_class_name=sosny1
+  in_2_unit="kbit"
+  in_2_rate="512"
+  in_2_ceil="1024"
+  in_2_function=""
+
+  # dalsi skupina - je potomkem tridy sosny1
+  in_3_parent=sosny1
+  in_3_range="10.107.3.112,10.107.3.113 10.107.3.115/30"
+  in_3_unit="kbit"
+  in_3_rate="20"
+  in_3_ceil="512"
+  in_3_function=""
+  # dovnitr kazde tridy dame PRIO
+  in_3_nest_qdisc_type="prio"
+  in_3_bands_prio=3
+  # nastaveni prvni PRIO tridy uvnitr treti skupiny HTB
+  in_3_1_protocols_prio="1"
+  in_3_1_tcp_dports_prio="22"
+  in_3_1_udp_dports_prio="53"
+  in_3_1_function_prio=""
+  in_3_2_tcp_dports_prio="80 25"
+  # dovnitr druhe PRIO tridy dame jeste ESFQ
+  in_3_2_nest_qdisc_type_prio="esfq"
+  in_3_2_perturb_esfq="10"
+
+  in_4_rate="30"
+  in_4_ceil="512"
+  # pro zarazeni paketu pouzijeme vlastni funkci
+  # viz funkce my_htb4 na konci souboru
+  in_4_function="my_htb4"
+
+  #
+  ###
+
+# chceme shapovat output pro tenhle interface? Jestli ne, nastavime
+# output=no a nasledujici parametry zacinajici na out_ nemusime nastavovat.
+#
+# polozky jsou stejne jako u inputu (tykaji se ale samozrejme outputu :),
+# takze sem ty komentare nebudu psat znova
+output="yes"
+  out_qdisc_type="htb"
+
+  # SFQ
+  out_perturb_sfq="10"
+
+  # ESFQ
+  out_perturb_esfq="10"
+  out_dist_esfq="no"
+
+  # HTB
+  # pouzivat IMQ i pro vystup? Hodi se u half duplex linek.
+  # Zarizeni (treba imq0) se pouzije stejne jako u inputu,
+  # takze tady neni potreba nastavit korenovou a default tridu.
+  # !!! EXPERIMENTALNI, NEOZKOUSENE !!!
+  out_use_imq="yes"
+  out_unit="kbit"
+  out_root_rate="3000"
+  out_ceil="2900"
+  out_rate="13"
+  out_dist="no"
+  out_not_shape_range=""
+  out_r2q="2"
+
+  out_1_unit="kbit"
+  out_1_range="$in_1_range"
+  out_1_rate="13"
+  out_1_ceil="1024"
+
+  #out_2_range="10.107.3.45-47 10.107.5.0/24"
+  #out_2_rate="15"
+  #out_2_ceil="3200"
+  # atd.
+
+return 0
+}
+
+iface1() {
+
+#iface="wlan3"
+#input=""
+#output=""
+# atd.
+
+return 0
+}
+
+#### ukazky vlastnich funkci - viz Maly navod -> Definovani vlastnich funkci ####
+#
+#
+
+# vsechno co smeruje na 85.162.138.74 patri do nejprioritnejsi tridy
+my_prio1() {
+  $check $tc filter add dev "$sdev" parent ${1}: prio "$prionum" \
+    protocol ip u32 \
+    match ip dst 85.162.138.74 \
+    flowid ${1}:${prionum}
+
+  return 0
+}
+
+# vsechno co smeruje na/z tento pocitac nebudeme omezovat (treba pokud nechceme
+# omezovat lokalni provoz kvuli fileserveru). Musime spravne vyplnit IP adresu.
+my_htb_root() {
+  $check $iptables -t mangle -A unishaper_in -i "$iface" \
+    -j MARK --set-mark "$notshape"
+  $check $iptables -t mangle -A unishaper_post -o "$iface" \
+    -s 85.132.85.12 -j MARK --set-mark "$notshape"
+  
+  return 0
+}
+
+# vlastni pravidlo pro klasifikovani lokalniho provozu (hodi se pri in_dist=yes",
+# viz 'maly navod' -> NASTAVENI PARAMETRU 'dist'
+# Pokud nechceme omezovat lokalni provoz vubec, muzeme pouzit predchozi funkci.
+my_htb_dist() {
+  $check $iptables -t mangle -A unishaper_in -i "$iface" \
+    -j MARK --set-mark "$classid"
+  
+  return 0
+}
+
+# vsechno co smeruje z 10.107.3.120 na 85.123.52.87 dame do tridy $classid
+my_htb4() {
+  [ "$dist" = 'yes' ] && return 0
+  $check $iptables -t mangle -A unishaper_pre -i "$iface" \
+    -s 10.107.3.120 -d 85.123.52.87 -j MARK --set-mark "$classid"
+
+  return 0
+}
+
+# nazev funkce, ktera bude spustena pri "uklidu" po nejake chybe,
+# nebo pri odstranovani pravidel.
+# Tahle funkce bude spustena az po provedeni zabudovane "uklidove" funkce
+# a slouzi jen pro pripadne odstraneni pozustatku vlastnich funkci.
+clean_function=''
+
+# kolik imq zarizeni budeme potrebovat (u kolika interfacu budeme shapovat
+# vstup (upload))? slouzi pri zavadeni modulu, muze byt nastaveno na vic
+# nez je potreba
+imqnumdevs=2
+
+# jaky imq interface se ma pouzit jako prvni? Nastavime o 1 mensi nez
+# cislo interfacu ktery se ma jako prvni pouzit - takze pro zarizeni imq0
+# je nutne nastavit na -1 (default), pro imq1 na 0, atd. Hodi se v pripade,
+# kdy si chceme vyhradit nejake imq zarizeni pro sebe (napr. tam chceme rucne
+# presmerovat nejaky traffic atd.), takze potrebujeme aby skript zacal
+# pouzivat az zarizeni s vyssim cislem (imq1, imq2 apod.)
+#imqnum=-1
+
+# testovat pri startu skriptu jestli mame vsechno co potrebujeme (tc,
+# iptables, podporu IMQ, ...)? Muzeme nastavit na "no", pokud mame jistotu
+# ze vsechno potrebne mame - trosku tim urychlime provadeni skriptu.
+tests="yes"
+
+# cesty k potrebnym prikazum, pokud nejsou v PATH
+iptables='iptables'
+tc='tc'
+ip='ip'
+

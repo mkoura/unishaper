@@ -1,4 +1,7 @@
-Script for setting-up the QoS on Linux. Used in HKfree.org metropolitan network on several access points.
+Moved to https://gitlab.com/mkourim/unishaper
+=============================================
+
+Script for setting-up the QoS on Linux. Was used in HKfree.org metropolitan network on several access points.
 
 The main README as well as comments in the script are in Czech only.
 
